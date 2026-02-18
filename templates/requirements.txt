@@ -1,4 +1,4 @@
-flask
-openai
-whisper
-ffmpeg-python
+flask==2.3.3
+openai==1.8.3
+whisper==20230314
+ffmpeg-python==0.2.0
