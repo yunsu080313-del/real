@@ -2,64 +2,50 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>영상+다국어 자막+더빙</title>
+<title>Whisper + TTS Demo</title>
+<style>
+body { font-family: Arial; margin: 40px; }
+video { display: block; margin: 20px 0; width: 600px; }
+input, select, button { margin: 5px; padding: 5px; }
+</style>
 </head>
 <body>
-<h1>영상 업로드 & 자막 + TTS 테스트</h1>
-
-<video id="video" controls width="600">
-  <source id="sourceVideo" src="" type="video/mp4">
-  <track id="subtitleTrack" kind="subtitles" srclang="en" label="Subtitle" default>
-</video>
-
-<hr>
-
+<h1>Whisper + TTS Demo</h1>
 <form id="uploadForm">
-  <input type="file" name="video" accept="video/*"><br><br>
-  <label>언어 선택:
-    <select name="lang">
-      <option value="en">English</option>
-      <option value="ja">Japanese</option>
-      <option value="zh-cn">Chinese</option>
-      <option value="ko" selected>Korean</option>
-      <option value="fr">French</option>
-      <option value="de">German</option>
-      <option value="es">Spanish</option>
-    </select>
-  </label><br><br>
-  <button type="submit">업로드</button>
+<input type="file" id="videoFile" required>
+<select id="langSelect">
+<option value="ko">한국어</option>
+<option value="en">English</option>
+<option value="ja">日本語</option>
+</select>
+<button type="submit">업로드</button>
 </form>
 
-<audio id="ttsAudio" controls src="" style="display:none;"></audio>
+<video id="video" controls></video>
+<track id="subTrack" kind="subtitles" srclang="ko" default>
+<audio id="ttsAudio" controls></audio>
 
 <script>
 const form = document.getElementById("uploadForm");
-const videoEl = document.getElementById("video");
-const sourceEl = document.getElementById("sourceVideo");
-const trackEl = document.getElementById("subtitleTrack");
-const ttsEl = document.getElementById("ttsAudio");
+const video = document.getElementById("video");
+const track = document.getElementById("subTrack");
+const ttsAudio = document.getElementById("ttsAudio");
 
-form.addEventListener("submit", async e => {
-  e.preventDefault();
-  const fileInput = form.querySelector("input[name='video']");
-  const lang = form.querySelector("select[name='lang']").value;
-  if (!fileInput.files.length) return alert("영상 선택");
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const file = document.getElementById("videoFile").files[0];
+    const lang = document.getElementById("langSelect").value;
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("lang", lang);
 
-  const formData = new FormData();
-  formData.append("video", fileInput.files[0]);
-  formData.append("lang", lang);
+    const res = await fetch("/upload/", { method: "POST", body: formData });
+    const data = await res.json();
 
-  const res = await fetch("/upload", { method: "POST", body: formData });
-  const data = await res.json();
-
-  sourceEl.src = data.video;
-  trackEl.src = data.subtitle;
-  ttsEl.src = data.audio;
-  ttsEl.style.display = "block";
-
-  videoEl.load();
-  videoEl.play();
-  ttsEl.play();
+    video.src = "/" + data.video;
+    track.src = "/" + data.srt;
+    track.srclang = lang;
+    ttsAudio.src = "/" + data.tts;
 });
 </script>
 </body>

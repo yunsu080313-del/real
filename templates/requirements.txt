@@ -1,5 +1,7 @@
-flask
+fastapi
+uvicorn[standard]
+python-multipart
 whisper
-googletrans==4.0.0-rc1
-gTTS
-ffmpeg-python
+torch
+pyttsx3
+python-dotenv
