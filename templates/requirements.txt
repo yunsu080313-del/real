@@ -1,7 +1,4 @@
-fastapi
-uvicorn[standard]
-python-multipart
+flask
+openai
 whisper
-torch
-pyttsx3
-python-dotenv
+ffmpeg-python

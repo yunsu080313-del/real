@@ -1,57 +1,50 @@
 import os
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from dotenv import load_dotenv
+from flask import Flask, request, render_template, send_from_directory
+import openai
 import whisper
-import pyttsx3
-import tempfile
+import ffmpeg
 
-# 로컬 테스트용
-if os.path.exists(".env"):
-    load_dotenv()
-
+# 환경 변수 설정
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 
-app = FastAPI()
+app = Flask(__name__)
+UPLOAD_FOLDER = "uploads"
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
-# Railway는 임시 폴더 /tmp 사용 가능
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-
-# Whisper 모델
+# Whisper 모델 로드 (base)
 model = whisper.load_model("base")
 
-# 홈 페이지
-@app.get("/", response_class=HTMLResponse)
-def home():
-    with open("templates/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html")
 
-# 파일 업로드 + 자막 + TTS
-@app.post("/upload/")
-async def upload_video(file: UploadFile = File(...), lang: str = "ko"):
-    # 임시 파일 저장
-    upload_path = os.path.join(UPLOAD_DIR, file.filename)
-    with open(upload_path, "wb") as f:
-        f.write(await file.read())
+@app.route("/upload", methods=["POST"])
+def upload():
+    file = request.files.get("file")
+    if not file:
+        return {"error": "No file uploaded"}, 400
+    
+    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(filepath)
 
-    # Whisper로 자막 생성
-    result = model.transcribe(upload_path, language=lang)
-    srt_path = f"{upload_path}.srt"
+    # 자막 생성
+    result = model.transcribe(filepath, language="Korean")
+    srt_path = filepath + ".srt"
     with open(srt_path, "w", encoding="utf-8") as f:
-        f.write(result.get("subtitles", ""))
+        for seg in result["segments"]:
+            start = seg["start"]
+            end = seg["end"]
+            text = seg["text"].strip()
+            f.write(f"{int(start*1000)} --> {int(end*1000)}\n{text}\n\n")
 
-    # pyttsx3 TTS
-    tts_path = f"{upload_path}_tts.mp3"
-    tts = pyttsx3.init()
-    tts.setProperty('rate', 150)
-    tts.save_to_file(" ".join([seg['text'] for seg in result['segments']]), tts_path)
-    tts.runAndWait()
+    return {"video": file.filename, "srt": os.path.basename(srt_path)}
 
-    return {
-        "video": upload_path,
-        "srt": srt_path,
-        "tts": tts_path
-    }
+@app.route("/uploads/<path:filename>")
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))  # Railway가 포트 제공
+    app.run(host="0.0.0.0", port=port)
