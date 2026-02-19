@@ -5,12 +5,18 @@ from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
+# 업로드 폴더 설정
+UPLOAD_FOLDER = "static/uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Whisper 모델 로드
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = whisper.load_model("small", device=device)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     transcription = ""
+    video_path = None
 
     if request.method == "POST":
         if "audio" not in request.files:
@@ -21,19 +27,27 @@ def index():
             if file.filename == "":
                 transcription = "No file selected"
             else:
-                file_path = "temp_audio.wav"
-                file.save(file_path)
+                # 파일 저장
+                filename = file.filename
+                save_path = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(save_path)
 
                 try:
-                    result = model.transcribe(file_path)
+                    # Whisper로 변환
+                    result = model.transcribe(save_path)
                     transcription = result["text"]
+
+                    # 영상 경로 (HTML에서 재생용)
+                    video_path = f"/static/uploads/{filename}"
+
                 except Exception as e:
                     transcription = f"Error: {str(e)}"
-                finally:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
 
-    return render_template("index.html", transcription=transcription)
+    return render_template(
+        "index.html",
+        transcription=transcription,
+        video_path=video_path
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
