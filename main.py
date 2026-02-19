@@ -3,49 +3,31 @@ import re
 import torch
 import whisper
 from flask import Flask, render_template, request
+from openai import OpenAI
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 디바이스 설정
-device = "cuda" if torch.cuda.is_available() else "cpu"
+# OpenAI 클라이언트
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-# 모델 (품질 우선)
-model = whisper.load_model("medium", device=device)
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model = whisper.load_model("small", device=device)
 
 
 # -----------------------------
-# 자막 후처리 함수
+# 텍스트 후처리
 # -----------------------------
 
 def clean_text(text):
     text = re.sub(r"\s+", " ", text)
-    text = re.sub(r"(어+|음+|그+)\s*", "", text)
     return text.strip()
 
 
-def split_long_text(text, max_length=35):
-    words = text.split()
-    lines = []
-    current = ""
-
-    for word in words:
-        if len(current) + len(word) + 1 <= max_length:
-            current += " " + word
-        else:
-            lines.append(current.strip())
-            current = word
-
-    if current:
-        lines.append(current.strip())
-
-    return "\n".join(lines)
-
-
 # -----------------------------
-# WebVTT 생성
+# VTT 생성
 # -----------------------------
 
 def format_timestamp(seconds):
@@ -62,13 +44,26 @@ def create_vtt(segments, output_path):
         for segment in segments:
             start = format_timestamp(segment["start"])
             end = format_timestamp(segment["end"])
-
             text = clean_text(segment["text"])
-            text = split_long_text(text)
 
             if text:
                 f.write(f"{start} --> {end}\n")
                 f.write(f"{text}\n\n")
+
+
+# -----------------------------
+# TTS 생성
+# -----------------------------
+
+def create_dubbing(text, output_path):
+    response = client.audio.speech.create(
+        model="gpt-4o-mini-tts",
+        voice="alloy",
+        input=text
+    )
+
+    with open(output_path, "wb") as f:
+        f.write(response.content)
 
 
 # -----------------------------
@@ -79,6 +74,7 @@ def create_vtt(segments, output_path):
 def index():
     video_path = None
     subtitle_path = None
+    dubbing_path = None
 
     if request.method == "POST":
         file = request.files.get("audio")
@@ -88,11 +84,10 @@ def index():
             save_path = os.path.join(UPLOAD_FOLDER, filename)
             file.save(save_path)
 
-            # 🔥 Whisper 고품질 설정
+            # Whisper
             result = model.transcribe(
                 save_path,
                 language="ko",
-                task="transcribe",
                 temperature=0.0,
                 beam_size=5,
                 best_of=5,
@@ -101,20 +96,31 @@ def index():
 
             segments = result["segments"]
 
+            # 전체 텍스트 합치기
+            full_text = " ".join(
+                clean_text(seg["text"]) for seg in segments
+            )
+
             # VTT 생성
             base_name = filename.rsplit(".", 1)[0]
             vtt_filename = base_name + ".vtt"
             vtt_path = os.path.join(UPLOAD_FOLDER, vtt_filename)
-
             create_vtt(segments, vtt_path)
+
+            # 🔥 더빙 생성
+            dubbing_filename = base_name + "_dub.mp3"
+            dubbing_full_path = os.path.join(UPLOAD_FOLDER, dubbing_filename)
+            create_dubbing(full_text, dubbing_full_path)
 
             video_path = f"/static/uploads/{filename}"
             subtitle_path = f"/static/uploads/{vtt_filename}"
+            dubbing_path = f"/static/uploads/{dubbing_filename}"
 
     return render_template(
         "index.html",
         video_path=video_path,
-        subtitle_path=subtitle_path
+        subtitle_path=subtitle_path,
+        dubbing_path=dubbing_path
     )
 
 
