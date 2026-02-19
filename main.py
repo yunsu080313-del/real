@@ -5,37 +5,33 @@ from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
-# GPU 자동 감지
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model = whisper.load_model("small", device=device)  # Railway는 small 추천
+model = whisper.load_model("small", device=device)
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def index():
-    return render_template("index.html")
-
-@app.route("/upload", methods=["POST"])
-def upload():
     transcription = ""
 
-    if "audio" not in request.files:
-        return render_template("index.html", transcription="No file uploaded")
+    if request.method == "POST":
+        if "audio" not in request.files:
+            transcription = "No file uploaded"
+        else:
+            file = request.files["audio"]
 
-    file = request.files["audio"]
+            if file.filename == "":
+                transcription = "No file selected"
+            else:
+                file_path = "temp_audio.wav"
+                file.save(file_path)
 
-    if file.filename == "":
-        return render_template("index.html", transcription="No file selected")
-
-    file_path = "temp_audio.wav"
-    file.save(file_path)
-
-    try:
-        result = model.transcribe(file_path)
-        transcription = result["text"]
-    except Exception as e:
-        transcription = f"Error: {str(e)}"
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+                try:
+                    result = model.transcribe(file_path)
+                    transcription = result["text"]
+                except Exception as e:
+                    transcription = f"Error: {str(e)}"
+                finally:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
 
     return render_template("index.html", transcription=transcription)
 
