@@ -1,33 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Whisper Transcription</title>
+    <title>Video Subtitle Overlay</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Speech to Text</h1>
+<div class="container">
 
-        <form method="POST" enctype="multipart/form-data">
-            <input type="file" name="audio" accept="audio/*,video/*" required>
-            <button type="submit">Transcribe</button>
-        </form>
+    <h1>Video Subtitle Generator</h1>
 
-        {% if video_path %}
-        <div class="video">
-            <h2>Uploaded Video</h2>
-            <video width="500" controls>
-                <source src="{{ video_path }}">
-            </video>
-        </div>
-        {% endif %}
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="audio" accept="audio/*,video/*" required>
+        <button type="submit">Generate Subtitles</button>
+    </form>
 
-        {% if transcription %}
-        <div class="result">
-            <h2>Result</h2>
-            <p>{{ transcription }}</p>
-        </div>
-        {% endif %}
+    {% if video_path %}
+    <div class="video-container">
+        <video width="700" controls>
+            <source src="{{ video_path }}">
+            <track src="{{ subtitle_path }}"
+                   kind="subtitles"
+                   srclang="en"
+                   label="English"
+                   default>
+        </video>
     </div>
+    {% endif %}
+
+</div>
 </body>
 </html>
