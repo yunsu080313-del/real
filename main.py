@@ -19,16 +19,13 @@ translator = Translator()
 
 
 # -----------------------------
-# 공통 함수
+# 유틸
 # -----------------------------
 def clean_text(text):
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
 
-# -----------------------------
-# 자막 생성
-# -----------------------------
 def format_timestamp(seconds):
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
@@ -36,7 +33,18 @@ def format_timestamp(seconds):
     return f"{hours:02}:{minutes:02}:{secs:06.3f}"
 
 
-def create_vtt(segments, output_path):
+def change_speed(sound, speed=1.0):
+    sound_with_altered_frame_rate = sound._spawn(
+        sound.raw_data,
+        overrides={"frame_rate": int(sound.frame_rate * speed)}
+    )
+    return sound_with_altered_frame_rate.set_frame_rate(sound.frame_rate)
+
+
+# -----------------------------
+# 자막 생성
+# -----------------------------
+def create_vtt(segments, output_path, target_lang):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("WEBVTT\n\n")
 
@@ -45,14 +53,17 @@ def create_vtt(segments, output_path):
             end = format_timestamp(seg["end"])
             text = clean_text(seg["text"])
 
+            if target_lang != "ko":
+                text = translator.translate(text, src="ko", dest=target_lang).text
+
             if text:
                 f.write(f"{start} --> {end}\n{text}\n\n")
 
 
 # -----------------------------
-# 문장 단위 싱크 더빙 생성
+# 싱크 더빙 생성 + 속도 조절
 # -----------------------------
-def create_synced_dubbing(segments, output_path):
+def create_synced_dubbing(segments, output_path, target_lang):
     final_audio = AudioSegment.silent(duration=0)
 
     for seg in segments:
@@ -64,30 +75,36 @@ def create_synced_dubbing(segments, output_path):
         if not text_ko:
             continue
 
-        # 번역
-        text_en = translator.translate(text_ko, src="ko", dest="en").text
+        text_translated = translator.translate(
+            text_ko,
+            src="ko",
+            dest=target_lang
+        ).text
 
-        # TTS 생성
         temp_file = "temp_segment.mp3"
-        tts = gTTS(text=text_en, lang="en")
+        tts = gTTS(text=text_translated, lang=target_lang)
         tts.save(temp_file)
 
         segment_audio = AudioSegment.from_mp3(temp_file)
+        os.remove(temp_file)
 
-        # 길이 보정
-        if len(segment_audio) > duration_ms:
-            segment_audio = segment_audio[:duration_ms]
-        else:
-            silence_needed = duration_ms - len(segment_audio)
-            segment_audio += AudioSegment.silent(duration=silence_needed)
+        # 🔥 속도 자동 조절
+        actual_length = len(segment_audio)
 
-        # 시작 위치까지 무음 채우기
+        if actual_length > 0:
+            speed_ratio = actual_length / duration_ms
+            segment_audio = change_speed(segment_audio, speed_ratio)
+
+        # 길이 정밀 보정
+        segment_audio = segment_audio[:duration_ms]
+
+        if len(segment_audio) < duration_ms:
+            segment_audio += AudioSegment.silent(duration=duration_ms - len(segment_audio))
+
         if len(final_audio) < start_ms:
             final_audio += AudioSegment.silent(duration=start_ms - len(final_audio))
 
         final_audio += segment_audio
-
-        os.remove(temp_file)
 
     final_audio.export(output_path, format="mp3")
 
@@ -122,6 +139,8 @@ def index():
     if request.method == "POST":
         file = request.files.get("audio")
         action = request.form.get("action")
+        subtitle_lang = request.form.get("subtitle_lang")
+        dubbing_lang = request.form.get("dubbing_lang")
 
         if file and file.filename != "":
             filename = file.filename
@@ -140,20 +159,22 @@ def index():
 
             segments = result["segments"]
 
-            # 자막 버튼
             if action == "subtitle":
-                vtt_filename = base_name + ".vtt"
+                vtt_filename = base_name + f"_{subtitle_lang}.vtt"
                 vtt_path = os.path.join(UPLOAD_FOLDER, vtt_filename)
-                create_vtt(segments, vtt_path)
+                create_vtt(segments, vtt_path, subtitle_lang)
                 subtitle_path = f"/static/uploads/{vtt_filename}"
                 video_path = f"/static/uploads/{filename}"
 
-            # 더빙 버튼
             if action == "dubbing":
                 dubbing_filename = base_name + "_dub.mp3"
                 dubbing_path_full = os.path.join(UPLOAD_FOLDER, dubbing_filename)
 
-                create_synced_dubbing(segments, dubbing_path_full)
+                create_synced_dubbing(
+                    segments,
+                    dubbing_path_full,
+                    dubbing_lang
+                )
 
                 dubbed_video_filename = base_name + "_dubbed.mp4"
                 dubbed_video_full = os.path.join(UPLOAD_FOLDER, dubbed_video_filename)
