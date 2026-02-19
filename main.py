@@ -1,23 +1,30 @@
-from flask import Flask, request, render_template
+import os
+import torch
 import whisper
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
-# CPU로 모델 로드
-model = whisper.load_model("base", device="cpu")
+# GPU 자동 감지
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model = whisper.load_model("medium", device=device)
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def index():
-    return "Whisper TTS 서버 실행 중"
+    transcription = ""
+    if request.method == "POST":
+        file = request.files["audio"]
+        if file:
+            file_path = "temp_audio.wav"
+            file.save(file_path)
 
-@app.route("/transcribe", methods=["POST"])
-def transcribe():
-    if "file" not in request.files:
-        return "No file uploaded", 400
-    audio_file = request.files["file"]
-    audio_file.save("temp_audio.wav")
-    result = model.transcribe("temp_audio.wav")
-    return result["text"]
+            result = model.transcribe(file_path)
+            transcription = result["text"]
+
+            os.remove(file_path)
+
+    return render_template("index.html", transcription=transcription)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
