@@ -1,48 +1,19 @@
 body {
+    background: #111;
+    color: white;
     font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #1f2937, #111827);
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
-
-.container {
-    background: #1e293b;
-    padding: 40px;
-    border-radius: 12px;
-    width: 420px;
     text-align: center;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
 }
 
-h1 {
-    margin-bottom: 20px;
-}
-
-input[type="file"] {
-    margin-bottom: 15px;
-}
-
-button {
-    background: #3b82f6;
-    border: none;
-    padding: 10px 20px;
-    color: white;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #2563eb;
-}
-
-.result {
+video {
     margin-top: 20px;
-    background: #111827;
-    padding: 15px;
-    border-radius: 6px;
-    text-align: left;
-    word-wrap: break-word;
+    border-radius: 10px;
+}
+
+/* 자막 스타일 (브라우저 기본 자막 스타일 커스터마이징) */
+video::cue {
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 18px;
+    padding: 4px;
 }
