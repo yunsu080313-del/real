@@ -12,7 +12,7 @@ body {
     background: #1e293b;
     padding: 40px;
     border-radius: 12px;
-    width: 400px;
+    width: 420px;
     text-align: center;
     box-shadow: 0 10px 25px rgba(0,0,0,0.4);
 }
@@ -43,4 +43,6 @@ button:hover {
     background: #111827;
     padding: 15px;
     border-radius: 6px;
+    text-align: left;
+    word-wrap: break-word;
 }
