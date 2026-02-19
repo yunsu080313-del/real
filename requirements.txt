@@ -3,3 +3,5 @@ torch
 openai-whisper
 gtts
 googletrans==4.0.0-rc1
+pydub
+ffmpeg-python
