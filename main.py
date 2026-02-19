@@ -11,22 +11,24 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = whisper.load_model("small", device=device)
 
-def format_timestamp(seconds):
+def format_timestamp_vtt(seconds):
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = seconds % 60
-    return f"{hours:02}:{minutes:02}:{secs:06.3f}".replace('.', ',')
+    return f"{hours:02}:{minutes:02}:{secs:06.3f}"
 
-def create_srt(segments, output_path):
+def create_vtt(segments, output_path):
     with open(output_path, "w", encoding="utf-8") as f:
-        for i, segment in enumerate(segments, start=1):
-            start = format_timestamp(segment["start"])
-            end = format_timestamp(segment["end"])
+        f.write("WEBVTT\n\n")
+
+        for segment in segments:
+            start = format_timestamp_vtt(segment["start"])
+            end = format_timestamp_vtt(segment["end"])
             text = segment["text"].strip()
 
-            f.write(f"{i}\n")
             f.write(f"{start} --> {end}\n")
             f.write(f"{text}\n\n")
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -44,10 +46,11 @@ def index():
             result = model.transcribe(save_path)
             segments = result["segments"]
 
-            # SRT 생성
-            srt_filename = filename.rsplit(".", 1)[0] + ".srt"
-            srt_path = os.path.join(UPLOAD_FOLDER, srt_filename)
-            create_srt(segments, srt_path)
+            vtt_filename = filename.rsplit(".", 1)[0] + ".vtt"
+            vtt_path = os.path.join(UPLOAD_FOLDER, vtt_filename)
+            create_vtt(segments, vtt_path)
+
+            subtitle_path = f"/static/uploads/{vtt_filename}"
 
             video_path = f"/static/uploads/{filename}"
             subtitle_path = f"/static/uploads/{srt_filename}"
