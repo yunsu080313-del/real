@@ -52,8 +52,19 @@
     <h3>결과 영상</h3>
     <video controls width="720">
         <source src="{{ video_path }}" type="video/mp4">
+
+        {% if subtitle_path %}
+            <track
+                src="{{ subtitle_path }}"
+                kind="subtitles"
+                srclang="ko"
+                label="Subtitles"
+                default>
+        {% endif %}
+
     </video>
 {% endif %}
+
 
 </body>
 </html>
