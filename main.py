@@ -19,7 +19,15 @@ translator = Translator()
 
 
 # -----------------------------
-# 유틸
+# favicon 404 제거
+# -----------------------------
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
+
+# -----------------------------
+# 유틸 함수
 # -----------------------------
 def clean_text(text):
     text = re.sub(r"\s+", " ", text)
@@ -34,11 +42,11 @@ def format_timestamp(seconds):
 
 
 def change_speed(sound, speed=1.0):
-    sound_with_altered_frame_rate = sound._spawn(
+    altered = sound._spawn(
         sound.raw_data,
         overrides={"frame_rate": int(sound.frame_rate * speed)}
     )
-    return sound_with_altered_frame_rate.set_frame_rate(sound.frame_rate)
+    return altered.set_frame_rate(sound.frame_rate)
 
 
 # -----------------------------
@@ -61,7 +69,7 @@ def create_vtt(segments, output_path, target_lang):
 
 
 # -----------------------------
-# 싱크 더빙 생성 + 속도 조절
+# 싱크 더빙 생성 (속도 자동 조절)
 # -----------------------------
 def create_synced_dubbing(segments, output_path, target_lang):
     final_audio = AudioSegment.silent(duration=0)
@@ -75,27 +83,24 @@ def create_synced_dubbing(segments, output_path, target_lang):
         if not text_ko:
             continue
 
-        text_translated = translator.translate(
+        translated = translator.translate(
             text_ko,
             src="ko",
             dest=target_lang
         ).text
 
         temp_file = "temp_segment.mp3"
-        tts = gTTS(text=text_translated, lang=target_lang)
-        tts.save(temp_file)
+        gTTS(text=translated, lang=target_lang).save(temp_file)
 
         segment_audio = AudioSegment.from_mp3(temp_file)
         os.remove(temp_file)
 
-        # 🔥 속도 자동 조절
         actual_length = len(segment_audio)
 
-        if actual_length > 0:
+        if actual_length > 0 and duration_ms > 0:
             speed_ratio = actual_length / duration_ms
             segment_audio = change_speed(segment_audio, speed_ratio)
 
-        # 길이 정밀 보정
         segment_audio = segment_audio[:duration_ms]
 
         if len(segment_audio) < duration_ms:
@@ -129,7 +134,7 @@ def merge_video_with_dubbing(video_path, dubbing_path, output_path):
 
 
 # -----------------------------
-# 라우팅
+# 메인 라우트
 # -----------------------------
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -159,33 +164,38 @@ def index():
 
             segments = result["segments"]
 
+            # 자막 생성
             if action == "subtitle":
                 vtt_filename = base_name + f"_{subtitle_lang}.vtt"
-                vtt_path = os.path.join(UPLOAD_FOLDER, vtt_filename)
-                create_vtt(segments, vtt_path, subtitle_lang)
+                vtt_full = os.path.join(UPLOAD_FOLDER, vtt_filename)
+
+                create_vtt(segments, vtt_full, subtitle_lang)
+
                 subtitle_path = f"/static/uploads/{vtt_filename}"
                 video_path = f"/static/uploads/{filename}"
 
+            # 더빙 영상 생성
             if action == "dubbing":
-                dubbing_filename = base_name + "_dub.mp3"
-                dubbing_path_full = os.path.join(UPLOAD_FOLDER, dubbing_filename)
+                dubbing_mp3 = os.path.join(UPLOAD_FOLDER, base_name + "_dub.mp3")
 
                 create_synced_dubbing(
                     segments,
-                    dubbing_path_full,
+                    dubbing_mp3,
                     dubbing_lang
                 )
 
-                dubbed_video_filename = base_name + "_dubbed.mp4"
-                dubbed_video_full = os.path.join(UPLOAD_FOLDER, dubbed_video_filename)
+                dubbed_video = os.path.join(
+                    UPLOAD_FOLDER,
+                    base_name + "_dubbed.mp4"
+                )
 
                 merge_video_with_dubbing(
                     save_path,
-                    dubbing_path_full,
-                    dubbed_video_full
+                    dubbing_mp3,
+                    dubbed_video
                 )
 
-                video_path = f"/static/uploads/{dubbed_video_filename}"
+                video_path = f"/static/uploads/{base_name}_dubbed.mp4"
 
     return render_template(
         "index.html",
