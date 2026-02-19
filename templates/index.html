@@ -14,6 +14,14 @@
         <button type="submit">Generate Subtitles</button>
     </form>
 
+    {% if dubbing_path %}
+    <h3>더빙 음성</h3>
+    <audio controls>
+        <source src="{{ dubbing_path }}" type="audio/mpeg">
+    </audio>
+    {% endif %}
+
+
     {% if video_path %}
     <div class="video-container">
         <video width="700" controls>
