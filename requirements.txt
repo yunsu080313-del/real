@@ -1,4 +1,5 @@
 flask
 torch
 openai-whisper
-openai
+gtts
+googletrans==4.0.0-rc1
