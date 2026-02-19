@@ -1,6 +1,4 @@
 flask
 torch
-torchaudio
-torchvision
 openai-whisper
-gunicorn
+openai
