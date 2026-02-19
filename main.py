@@ -14,7 +14,7 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # Whisper 모델 로드 (base)
-model = whisper.load_model("base")
+model = whisper.load_model("tiny")
 
 @app.route("/", methods=["GET"])
 def index():
