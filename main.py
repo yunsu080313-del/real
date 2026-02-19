@@ -2,6 +2,7 @@ import os
 import re
 import torch
 import whisper
+import subprocess
 from flask import Flask, render_template, request
 from gtts import gTTS
 from googletrans import Translator
@@ -25,6 +26,9 @@ def clean_text(text):
     return text.strip()
 
 
+# -----------------------------
+# 자막 생성
+# -----------------------------
 def format_timestamp(seconds):
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
@@ -32,9 +36,6 @@ def format_timestamp(seconds):
     return f"{hours:02}:{minutes:02}:{secs:06.3f}"
 
 
-# -----------------------------
-# 자막 생성
-# -----------------------------
 def create_vtt(segments, output_path):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("WEBVTT\n\n")
@@ -73,14 +74,14 @@ def create_synced_dubbing(segments, output_path):
 
         segment_audio = AudioSegment.from_mp3(temp_file)
 
-        # 길이 맞추기
+        # 길이 보정
         if len(segment_audio) > duration_ms:
             segment_audio = segment_audio[:duration_ms]
         else:
             silence_needed = duration_ms - len(segment_audio)
             segment_audio += AudioSegment.silent(duration=silence_needed)
 
-        # 시작 위치까지 무음 추가
+        # 시작 위치까지 무음 채우기
         if len(final_audio) < start_ms:
             final_audio += AudioSegment.silent(duration=start_ms - len(final_audio))
 
@@ -92,13 +93,31 @@ def create_synced_dubbing(segments, output_path):
 
 
 # -----------------------------
+# 영상 + 더빙 합성
+# -----------------------------
+def merge_video_with_dubbing(video_path, dubbing_path, output_path):
+    command = [
+        "ffmpeg",
+        "-y",
+        "-i", video_path,
+        "-i", dubbing_path,
+        "-c:v", "copy",
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-shortest",
+        output_path
+    ]
+
+    subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+# -----------------------------
 # 라우팅
 # -----------------------------
 @app.route("/", methods=["GET", "POST"])
 def index():
     video_path = None
     subtitle_path = None
-    dubbing_path = None
 
     if request.method == "POST":
         file = request.files.get("audio")
@@ -127,21 +146,30 @@ def index():
                 vtt_path = os.path.join(UPLOAD_FOLDER, vtt_filename)
                 create_vtt(segments, vtt_path)
                 subtitle_path = f"/static/uploads/{vtt_filename}"
+                video_path = f"/static/uploads/{filename}"
 
             # 더빙 버튼
             if action == "dubbing":
-                dubbing_filename = base_name + "_dub_en.mp3"
-                dubbing_full_path = os.path.join(UPLOAD_FOLDER, dubbing_filename)
-                create_synced_dubbing(segments, dubbing_full_path)
-                dubbing_path = f"/static/uploads/{dubbing_filename}"
+                dubbing_filename = base_name + "_dub.mp3"
+                dubbing_path_full = os.path.join(UPLOAD_FOLDER, dubbing_filename)
 
-            video_path = f"/static/uploads/{filename}"
+                create_synced_dubbing(segments, dubbing_path_full)
+
+                dubbed_video_filename = base_name + "_dubbed.mp4"
+                dubbed_video_full = os.path.join(UPLOAD_FOLDER, dubbed_video_filename)
+
+                merge_video_with_dubbing(
+                    save_path,
+                    dubbing_path_full,
+                    dubbed_video_full
+                )
+
+                video_path = f"/static/uploads/{dubbed_video_filename}"
 
     return render_template(
         "index.html",
         video_path=video_path,
-        subtitle_path=subtitle_path,
-        dubbing_path=dubbing_path
+        subtitle_path=subtitle_path
     )
 
 
