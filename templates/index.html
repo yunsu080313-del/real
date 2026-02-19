@@ -1,38 +1,23 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Whisper + TTS Demo</title>
+    <title>Whisper Transcription</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>영상 업로드 후 자막 생성</h1>
-    <form id="uploadForm" enctype="multipart/form-data">
-        <input type="file" name="file" accept="video/*">
-        <button type="submit">업로드</button>
-    </form>
-    <video id="video" width="600" controls></video>
-    <track id="subtitles" kind="subtitles" srclang="ko" default>
-    
-    <script>
-    const form = document.getElementById("uploadForm");
-    const video = document.getElementById("video");
-    const track = document.getElementById("subtitles");
+    <div class="container">
+        <h1>Speech to Text</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="audio" accept="audio/*" required>
+            <button type="submit">Transcribe</button>
+        </form>
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const fileInput = form.querySelector("input[name=file]");
-        const formData = new FormData();
-        formData.append("file", fileInput.files[0]);
-
-        const res = await fetch("/upload", { method: "POST", body: formData });
-        const data = await res.json();
-        if(data.error) { alert(data.error); return; }
-
-        video.src = "/uploads/" + data.video;
-        track.src = "/uploads/" + data.srt;
-        video.load();
-        video.play();
-    });
-    </script>
+        {% if transcription %}
+        <div class="result">
+            <h2>Result</h2>
+            <p>{{ transcription }}</p>
+        </div>
+        {% endif %}
+    </div>
 </body>
 </html>
