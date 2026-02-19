@@ -10,9 +10,17 @@
 
         <form method="POST" enctype="multipart/form-data">
             <input type="file" name="audio" accept="audio/*,video/*" required>
-
             <button type="submit">Transcribe</button>
         </form>
+
+        {% if video_path %}
+        <div class="video">
+            <h2>Uploaded Video</h2>
+            <video width="500" controls>
+                <source src="{{ video_path }}">
+            </video>
+        </div>
+        {% endif %}
 
         {% if transcription %}
         <div class="result">
