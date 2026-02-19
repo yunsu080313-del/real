@@ -14,7 +14,7 @@ UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model = whisper.load_model("small", device=device)
+model = whisper.load_model("medium", device=device)
 translator = Translator()
 
 
