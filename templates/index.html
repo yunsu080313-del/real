@@ -1,40 +1,101 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>Video Subtitle Overlay</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <title>Whisper STT + Sync Dubbing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        form {
+            margin-bottom: 30px;
+        }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 8px 14px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        audio, video {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .section {
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
-<div class="container">
 
-    <h1>Video Subtitle Generator</h1>
+<h1>STT + 번역 + 문장 단위 싱크 더빙</h1>
 
-    <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="audio" accept="audio/*,video/*" required>
-        <button type="submit">Generate Subtitles</button>
-    </form>
+<form method="POST" enctype="multipart/form-data">
+    <input type="file" name="audio" accept="audio/*,video/*" required><br>
 
-    {% if dubbing_path %}
-    <h3>더빙 음성</h3>
+    <button type="submit" name="action" value="subtitle">
+        자막 생성
+    </button>
+
+    <button type="submit" name="action" value="dubbing">
+        더빙 생성
+    </button>
+</form>
+
+
+{% if video_path %}
+<div class="section">
+    <h3>업로드 파일</h3>
+
+    <video controls>
+        <source src="{{ video_path }}">
+        브라우저가 video 태그를 지원하지 않습니다.
+    </video>
+</div>
+{% endif %}
+
+
+{% if subtitle_path %}
+<div class="section">
+    <h3>생성된 자막 (VTT)</h3>
+    <a href="{{ subtitle_path }}" download>
+        자막 다운로드
+    </a>
+</div>
+{% endif %}
+
+
+{% if dubbing_path %}
+<div class="section">
+    <h3>영어 더빙 (싱크 적용)</h3>
+
     <audio controls>
         <source src="{{ dubbing_path }}" type="audio/mpeg">
+        브라우저가 audio 태그를 지원하지 않습니다.
     </audio>
-    {% endif %}
 
-
-    {% if video_path %}
-    <div class="video-container">
-        <video width="700" controls>
-            <source src="{{ video_path }}">
-            <track src="{{ subtitle_path }}"
-               kind="subtitles"
-               srclang="en"
-               label="English"
-               default>
-        </video>
-    </div>
-    {% endif %}
-
+    <p>
+        <a href="{{ dubbing_path }}" download>
+            더빙 파일 다운로드
+        </a>
+    </p>
 </div>
+{% endif %}
+
 </body>
 </html>
