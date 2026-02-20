@@ -3,203 +3,117 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DUBBY - AI 자막 & 더빙</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>AI Dubbing Service</title>
 
 <style>
 body {
-    font-family: 'Inter', -apple-system, sans-serif;
-    background-color: #f8fafc;
-    color: #1e293b;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
 }
 
-.glass-card {
-    background: rgba(255,255,255,0.9);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(226,232,240,0.8);
+.container {
+    max-width: 800px;
+    margin: 80px auto;
+    text-align: center;
 }
 
-.loading-bar {
-    height: 20px;
-    width: 0%;
-    background-color: #3b82f6;
-    border-radius: 10px;
-    transition: width 0.2s ease;
+h1 {
+    margin-bottom: 40px;
 }
 
-.country-btn {
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid #cbd5e1;
-    font-size: 13px;
+button {
+    padding: 12px 24px;
+    margin: 10px;
+    font-size: 16px;
     cursor: pointer;
 }
 
-.country-btn.active {
-    background-color: #3b82f6;
-    color: white;
+.top-right {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+}
+
+select {
+    padding: 6px 10px;
+    font-size: 14px;
 }
 </style>
 </head>
 
-<body class="min-h-screen py-6 px-4">
+<body>
 
-<!-- ===== 상단 헤더 ===== -->
-<div class="flex justify-between items-center max-w-6xl mx-auto mb-8">
-
-    <!-- 왼쪽 로고 -->
-    <div class="flex items-center">
-        <img src="/static/logo.png" alt="DUBBY Logo" class="w-12 h-12 mr-3">
-        <div>
-            <h1 class="text-2xl font-bold">DUBBY</h1>
-            <p class="text-sm text-slate-500">국가 전용 AI 자막 & 더빙</p>
-        </div>
-    </div>
-
-    <!-- 오른쪽 국가 모드 -->
-    <div class="flex gap-2">
-        <button class="country-btn active" onclick="setCountry('ko', this)">🇰🇷</button>
-        <button class="country-btn" onclick="setCountry('en', this)">🇺🇸</button>
-        <button class="country-btn" onclick="setCountry('ja', this)">🇯🇵</button>
-        <button class="country-btn" onclick="setCountry('zh-cn', this)">🇨🇳</button>
-    </div>
-
+<!-- 우측 상단 UI 언어 선택 -->
+<div class="top-right">
+    <select id="uiLanguage">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+    </select>
 </div>
 
-<!-- ===== 본문 ===== -->
-<div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
+<div class="container">
+    <h1 data-i18n="title">AI 더빙 서비스</h1>
 
-<!-- 왼쪽 업로드 영역 -->
-<div class="md:col-span-4">
-<div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
+    <input type="file" id="videoInput">
 
-<input type="file" id="videoFile" accept="video/*,audio/*" class="w-full">
+    <br><br>
 
-<button id="subtitleBtn" class="w-full bg-blue-600 text-white p-3 rounded-xl">
-자막 생성
-</button>
-
-<button id="dubbingBtn" class="w-full bg-slate-900 text-white p-3 rounded-xl">
-더빙 생성
-</button>
-
-<!-- 진행률 -->
-<div>
-    <div class="w-full bg-slate-200 rounded-full h-5">
-        <div id="progressBar" class="loading-bar"></div>
-    </div>
-    <p class="text-right text-xs mt-1" id="progressText">0%</p>
-</div>
-
-</div>
-</div>
-
-<!-- 오른쪽 영상 영역 -->
-<div class="md:col-span-8">
-<div class="glass-card min-h-[400px] p-4 rounded-2xl flex flex-col items-center justify-center">
-
-<video id="resultVideo" controls class="hidden w-full rounded-lg mb-2">
-    <track id="subtitleTrack"
-           kind="subtitles"
-           src=""
-           srclang="ko"
-           label="자막"
-           default>
-</video>
-
-<a id="subtitleLink"
-   href="#"
-   target="_blank"
-   class="hidden text-blue-600 underline">
-   자막 다운로드
-</a>
-
-</div>
-</div>
-
+    <button data-i18n="upload">영상 업로드</button>
+    <button data-i18n="start">변환 시작</button>
 </div>
 
 <script>
-let selectedLanguage = "ko";
-
-function setCountry(lang, btn){
-    selectedLanguage = lang;
-    document.querySelectorAll(".country-btn")
-            .forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-}
-
-async function uploadFile(actionType){
-
-    const fileInput = document.getElementById("videoFile");
-    if(!fileInput.files[0]){
-        alert("파일을 선택하세요.");
-        return;
+/* =========================
+   번역 데이터
+========================= */
+const translations = {
+    ko: {
+        title: "AI 더빙 서비스",
+        upload: "영상 업로드",
+        start: "변환 시작"
+    },
+    en: {
+        title: "AI Dubbing Service",
+        upload: "Upload Video",
+        start: "Start Processing"
+    },
+    ja: {
+        title: "AI吹き替えサービス",
+        upload: "動画アップロード",
+        start: "処理開始"
     }
+};
 
-    const formData = new FormData();
-    formData.append("audio", fileInput.files[0]);
-    formData.append("action", actionType);
-    formData.append("subtitle_lang", selectedLanguage);
-    formData.append("dubbing_lang", selectedLanguage);
-
-    const progressBar = document.getElementById("progressBar");
-    const progressText = document.getElementById("progressText");
-    const resultVideo = document.getElementById("resultVideo");
-    const subtitleLink = document.getElementById("subtitleLink");
-    const subtitleTrack = document.getElementById("subtitleTrack");
-
-    progressBar.style.width = "0%";
-    progressText.textContent = "0%";
-
-    let progress = 0;
-    const interval = setInterval(()=>{
-        if(progress < 95){
-            progress++;
-            progressBar.style.width = progress + "%";
-            progressText.textContent = progress + "%";
-        }
-    }, 100);
-
-    const response = await fetch("/process", {
-        method: "POST",
-        body: formData
+/* =========================
+   언어 변경 함수
+========================= */
+function changeLanguage(lang) {
+    document.querySelectorAll("[data-i18n]").forEach(element => {
+        const key = element.getAttribute("data-i18n");
+        element.innerText = translations[lang][key];
     });
 
-    clearInterval(interval);
-
-    if(!response.ok){
-        alert("서버 오류 발생");
-        return;
-    }
-
-    const data = await response.json();
-
-    progressBar.style.width = "100%";
-    progressText.textContent = "100%";
-
-    if(data.video_path){
-        resultVideo.src = data.video_path;
-        resultVideo.classList.remove("hidden");
-    }
-
-    if(data.subtitle_path){
-        subtitleLink.href = data.subtitle_path;
-        subtitleLink.classList.remove("hidden");
-
-        subtitleTrack.src = data.subtitle_path;
-        subtitleTrack.srclang = selectedLanguage;
-        subtitleTrack.mode = "showing";
-
-        resultVideo.classList.remove("hidden");
-    }
+    document.documentElement.lang = lang;
+    localStorage.setItem("uiLang", lang);
 }
 
-document.getElementById("subtitleBtn")
-        .addEventListener("click", ()=>uploadFile("subtitle"));
+/* =========================
+   이벤트 리스너
+========================= */
+document.getElementById("uiLanguage").addEventListener("change", function() {
+    changeLanguage(this.value);
+});
 
-document.getElementById("dubbingBtn")
-        .addEventListener("click", ()=>uploadFile("dubbing"));
+/* =========================
+   페이지 로드시 저장된 언어 적용
+========================= */
+window.addEventListener("DOMContentLoaded", () => {
+    const savedLang = localStorage.getItem("uiLang") || "ko";
+    document.getElementById("uiLanguage").value = savedLang;
+    changeLanguage(savedLang);
+});
 </script>
 
 </body>
