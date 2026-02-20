@@ -1,203 +1,151 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>영상 자막 · 더빙 생성기</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 영상 자막 & 더빙 스튜디오</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.tailwindcss.com"></script>
 
-<link rel="icon" href="data:,">
-
-<style>
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background: #f5f6f8;
-        margin: 0;
-        padding: 0;
-    }
-
-    .container {
-        max-width: 900px;
-        margin: 40px auto;
-        background: white;
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-
-    h1 {
-        margin-top: 0;
-        font-size: 24px;
-        margin-bottom: 25px;
-    }
-
-    .section {
-        margin-bottom: 25px;
-    }
-
-    label {
-        display: block;
-        font-size: 14px;
-        margin-bottom: 6px;
-        font-weight: 600;
-    }
-
-    input[type="file"],
-    select {
-        width: 100%;
-        padding: 10px;
-        border-radius: 6px;
-        border: 1px solid #ddd;
-        font-size: 14px;
-        margin-bottom: 15px;
-    }
-
-    .button-group {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    button {
-        flex: 1;
-        min-width: 140px;
-        padding: 12px;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .btn-subtitle {
-        background: #2d7ff9;
-        color: white;
-    }
-
-    .btn-dubbing {
-        background: #111;
-        color: white;
-    }
-
-    button:hover {
-        opacity: 0.9;
-    }
-
-    .result {
-        margin-top: 30px;
-        padding-top: 20px;
-        border-top: 1px solid #eee;
-    }
-
-    video {
-        width: 100%;
-        border-radius: 8px;
-        margin-top: 15px;
-    }
-
-    .download {
-        margin-top: 15px;
-    }
-
-    .download a {
-        text-decoration: none;
-        font-size: 14px;
-        color: #2d7ff9;
-        font-weight: 600;
-    }
-
-    .note {
-        font-size: 12px;
-        color: #777;
-        margin-top: 8px;
-    }
-
-    @media (max-width: 600px) {
-        .container {
-            margin: 15px;
-            padding: 20px;
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
         }
-    }
-</style>
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.2s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transition: transform 0.1s ease;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .custom-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <script>
+        function updateFileName(input) {
+            const fileName = input.files.length > 0 ? input.files[0].name : "클릭하여 영상/오디오 선택";
+            document.getElementById("file-name").textContent = fileName;
+        }
+    </script>
 </head>
 
-<body>
+<body class="min-h-screen py-10 px-4">
 
-<div class="container">
+<div class="max-w-4xl mx-auto">
 
-    <h1>영상 자막 · 다국어 더빙 생성</h1>
+<header class="mb-10 text-center">
+    <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">
+        AI Video Studio
+    </h1>
+    <p class="text-slate-500 font-medium">자동 자막 생성 및 다국어 더빙 솔루션</p>
+</header>
 
-    <form method="POST" enctype="multipart/form-data">
+<main class="grid grid-cols-1 md:grid-cols-12 gap-8">
 
-        <div class="section">
-            <label>영상 또는 오디오 파일 업로드</label>
-            <input type="file" name="audio" accept="video/*,audio/*" required>
-        </div>
+<div class="md:col-span-5 lg:col-span-4">
+<form method="POST" enctype="multipart/form-data" id="mainForm" class="space-y-6">
 
-        <div class="section">
-            <label>자막 언어</label>
-            <select name="subtitle_lang">
-                <option value="ko">한국어</option>
-                <option value="en">영어</option>
-                <option value="ja">일본어</option>
-                <option value="zh-cn">중국어</option>
-            </select>
-        </div>
+<div class="glass-card p-6 rounded-2xl shadow-sm">
+<h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4">
+1. 파일 설정
+</h2>
 
-        <div class="section">
-            <label>더빙 언어</label>
-            <select name="dubbing_lang">
-                <option value="en">영어</option>
-                <option value="ja">일본어</option>
-                <option value="zh-cn">중국어</option>
-            </select>
-        </div>
+<div class="space-y-4">
 
-        <div class="button-group">
-            <button type="submit" name="action" value="subtitle" class="btn-subtitle">
-                자막 생성
-            </button>
+<div>
+<label class="block text-sm font-semibold mb-2 text-slate-700">
+미디어 업로드
+</label>
 
-            <button type="submit" name="action" value="dubbing" class="btn-dubbing">
-                더빙 영상 생성
-            </button>
-        </div>
+<label class="upload-area flex flex-col items-center justify-center p-6 rounded-xl cursor-pointer">
+<svg class="w-8 h-8 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+</svg>
 
-        <div class="note">
-            ※ 영상 길이가 길 경우 처리 시간이 증가할 수 있습니다.
-        </div>
+<span class="text-xs text-slate-500 font-medium text-center" id="file-name">
+클릭하여 영상/오디오 선택
+</span>
 
-    </form>
+<input type="file" name="audio" accept="video/*,audio/*"
+required class="hidden" onchange="updateFileName(this)">
+</label>
+</div>
 
-    {% if subtitle_path or video_path %}
-    <div class="result">
+</div>
+</div>
 
-        <h2>결과</h2>
+</form>
+</div>
 
-        {% if subtitle_path %}
-            <div class="download">
-                <a href="{{ subtitle_path }}" download>
-                    자막 파일 다운로드 (.vtt)
-                </a>
-            </div>
-        {% endif %}
+<div class="md:col-span-7 lg:col-span-8">
 
-        {% if video_path %}
-            <video controls>
-                <source src="{{ video_path }}" type="video/mp4">
+{% if not subtitle_path and not video_path %}
+<div class="glass-card h-full min-h-[400px] rounded-2xl flex flex-col items-center justify-center text-slate-400 border-dashed">
 
-                {% if subtitle_path %}
-                <track
-                    src="{{ subtitle_path }}"
-                    kind="subtitles"
-                    srclang="ko"
-                    default>
-                {% endif %}
-            </video>
-        {% endif %}
+<div class="bg-slate-50 p-4 rounded-full mb-4">
+<svg class="w-12 h-12 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+d="M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"></path>
+</svg>
+</div>
 
-    </div>
-    {% endif %}
+<p class="text-sm">결과가 여기에 표시됩니다</p>
 
+</div>
+{% endif %}
+
+</div>
+
+</main>
 </div>
 
 </body>
