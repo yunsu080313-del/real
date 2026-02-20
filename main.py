@@ -3,10 +3,11 @@ import re
 import torch
 import whisper
 import subprocess
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from gtts import gTTS
 from googletrans import Translator
 from pydub import AudioSegment
+
 
 app = Flask(__name__)
 
@@ -136,72 +137,61 @@ def merge_video_with_dubbing(video_path, dubbing_path, output_path):
 # -----------------------------
 # 메인 라우트
 # -----------------------------
-@app.route("/", methods=["GET", "POST"])
-def index():
+@app.route("/process", methods=["POST"])
+def process_video():
+    file = request.files.get("audio")
+    action = request.form.get("action")
+    subtitle_lang = request.form.get("subtitle_lang")
+    dubbing_lang = request.form.get("dubbing_lang")
+
+    if not file:
+        return jsonify({"error": "파일 없음"}), 400
+
+    filename = file.filename
+    base_name = filename.rsplit(".", 1)[0]
+    save_path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(save_path)
+
+    result = model.transcribe(
+        save_path,
+        language="ko",
+        temperature=0.0,
+        beam_size=5,
+        best_of=5,
+        fp16=False
+    )
+
+    segments = result["segments"]
+
     video_path = None
     subtitle_path = None
 
-    if request.method == "POST":
-        file = request.files.get("audio")
-        action = request.form.get("action")
-        subtitle_lang = request.form.get("subtitle_lang")
-        dubbing_lang = request.form.get("dubbing_lang")
+    if action == "subtitle":
+        vtt_filename = base_name + f"_{subtitle_lang}.vtt"
+        vtt_full = os.path.join(UPLOAD_FOLDER, vtt_filename)
+        create_vtt(segments, vtt_full, subtitle_lang)
 
-        if file and file.filename != "":
-            filename = file.filename
-            base_name = filename.rsplit(".", 1)[0]
-            save_path = os.path.join(UPLOAD_FOLDER, filename)
-            file.save(save_path)
+        video_path = f"/static/uploads/{filename}"
+        subtitle_path = f"/static/uploads/{vtt_filename}"
 
-            result = model.transcribe(
-                save_path,
-                language="ko",
-                temperature=0.0,
-                beam_size=5,
-                best_of=5,
-                fp16=False
-            )
+    elif action == "dubbing":
+        dubbing_mp3 = os.path.join(UPLOAD_FOLDER, base_name + "_dub.mp3")
 
-            segments = result["segments"]
+        create_synced_dubbing(segments, dubbing_mp3, dubbing_lang)
 
-            # 자막 생성
-            if action == "subtitle":
-                vtt_filename = base_name + f"_{subtitle_lang}.vtt"
-                vtt_full = os.path.join(UPLOAD_FOLDER, vtt_filename)
+        dubbed_video = os.path.join(
+            UPLOAD_FOLDER,
+            base_name + "_dubbed.mp4"
+        )
 
-                create_vtt(segments, vtt_full, subtitle_lang)
+        merge_video_with_dubbing(save_path, dubbing_mp3, dubbed_video)
 
-                subtitle_path = f"/static/uploads/{vtt_filename}"
-                video_path = f"/static/uploads/{filename}"
+        video_path = f"/static/uploads/{base_name}_dubbed.mp4"
 
-            # 더빙 영상 생성
-            if action == "dubbing":
-                dubbing_mp3 = os.path.join(UPLOAD_FOLDER, base_name + "_dub.mp3")
-
-                create_synced_dubbing(
-                    segments,
-                    dubbing_mp3,
-                    dubbing_lang
-                )
-
-                dubbed_video = os.path.join(
-                    UPLOAD_FOLDER,
-                    base_name + "_dubbed.mp4"
-                )
-
-                merge_video_with_dubbing(
-                    save_path,
-                    dubbing_mp3,
-                    dubbed_video
-                )
-
-                video_path = f"/static/uploads/{base_name}_dubbed.mp4"
-
-    return render_template(
-        "index.html",
-        video_path=video_path,
-        subtitle_path=subtitle_path
-    )
+    return jsonify({
+        "video_path": video_path,
+        "subtitle_path": subtitle_path
+    })
 
 
 if __name__ == "__main__":
