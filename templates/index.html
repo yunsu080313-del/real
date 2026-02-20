@@ -5,120 +5,119 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI 영상 번역 플랫폼</title>
 <script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+.fade-in {
+    animation: fadeIn 0.6s ease forwards;
+}
+
+@keyframes fadeIn {
+    from {opacity: 0; transform: translateY(10px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+.spinner {
+    border: 4px solid #eee;
+    border-top: 4px solid #000;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {transform: rotate(360deg);}
+}
+</style>
 </head>
 
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
 
-<div class="w-full max-w-3xl bg-white rounded-2xl shadow-xl p-10">
+<div class="w-full max-w-3xl bg-white rounded-2xl shadow-xl p-10 space-y-8">
 
-    <!-- 헤더 -->
-    <div class="text-center mb-10">
-        <h1 class="text-3xl font-bold">AI 영상 번역 플랫폼</h1>
-        <p class="text-gray-500 mt-2 text-sm">
-            영상 업로드 → 자막 생성 또는 AI 더빙
-        </p>
-    </div>
+    <h1 class="text-3xl font-bold text-center">AI 영상 번역 플랫폼</h1>
 
-    <!-- 업로드 폼 -->
-    <form method="POST" enctype="multipart/form-data" class="space-y-8">
+    <form id="uploadForm" class="space-y-6">
 
-        <!-- 1. 영상 업로드 -->
-        <div>
-            <label class="block font-semibold mb-2">영상 파일 업로드</label>
-            <input type="file"
-                   name="audio"
-                   accept="video/*"
-                   required
-                   class="w-full border rounded-lg p-3">
-        </div>
+        <input type="file" name="audio" required class="w-full border p-3 rounded-lg">
 
-        <!-- 2. 처리 방식 선택 -->
-        <div>
-            <label class="block font-semibold mb-4">처리 방식 선택</label>
+        <div class="grid grid-cols-2 gap-4">
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-3">
+                <select name="subtitle_lang" class="w-full border p-2 rounded-lg">
+                    <option value="ko">한국어</option>
+                    <option value="en">English</option>
+                    <option value="ja">日本語</option>
+                </select>
 
-                <!-- 자막 -->
-                <div class="border rounded-xl p-5 space-y-4">
-                    <h3 class="font-semibold">자막 생성</h3>
-
-                    <select name="subtitle_lang"
-                            class="w-full border rounded-lg p-2">
-                        <option value="ko">한국어</option>
-                        <option value="en">English</option>
-                        <option value="ja">日本語</option>
-                        <option value="zh-cn">中文</option>
-                        <option value="es">Español</option>
-                    </select>
-
-                    <button type="submit"
-                            name="action"
-                            value="subtitle"
-                            class="w-full bg-black text-white py-2 rounded-lg">
-                        자막 생성
-                    </button>
-                </div>
-
-                <!-- 더빙 -->
-                <div class="border rounded-xl p-5 space-y-4">
-                    <h3 class="font-semibold">AI 더빙</h3>
-
-                    <select name="dubbing_lang"
-                            class="w-full border rounded-lg p-2">
-                        <option value="en">English</option>
-                        <option value="ja">日本語</option>
-                        <option value="zh-cn">中文</option>
-                        <option value="es">Español</option>
-                    </select>
-
-                    <button type="submit"
-                            name="action"
-                            value="dubbing"
-                            class="w-full bg-blue-600 text-white py-2 rounded-lg">
-                        더빙 생성
-                    </button>
-                </div>
-
+                <button type="button"
+                        onclick="submitForm('subtitle')"
+                        class="w-full bg-black text-white py-2 rounded-lg">
+                    자막 생성
+                </button>
             </div>
-        </div>
 
+            <div class="space-y-3">
+                <select name="dubbing_lang" class="w-full border p-2 rounded-lg">
+                    <option value="en">English</option>
+                    <option value="ja">日本語</option>
+                </select>
+
+                <button type="button"
+                        onclick="submitForm('dubbing')"
+                        class="w-full bg-blue-600 text-white py-2 rounded-lg">
+                    더빙 생성
+                </button>
+            </div>
+
+        </div>
     </form>
 
-    <!-- 결과 영역 -->
-    {% if video_path %}
-    <div class="mt-12 space-y-6">
-        <h2 class="text-xl font-bold">결과 영상</h2>
-
-        <video controls class="w-full rounded-lg shadow">
-            <source src="{{ video_path }}" type="video/mp4">
-
-            {% if subtitle_path %}
-            <track src="{{ subtitle_path }}"
-                   kind="subtitles"
-                   srclang="ko"
-                   default>
-            {% endif %}
-        </video>
-
-        <div class="flex gap-4">
-            <a href="{{ video_path }}"
-               download
-               class="bg-green-600 text-white px-4 py-2 rounded-lg">
-               영상 다운로드
-            </a>
-
-            {% if subtitle_path %}
-            <a href="{{ subtitle_path }}"
-               download
-               class="bg-gray-700 text-white px-4 py-2 rounded-lg">
-               자막 다운로드
-            </a>
-            {% endif %}
-        </div>
+    <div id="status" class="text-center hidden">
+        <div class="spinner mx-auto"></div>
+        <p class="mt-4 text-gray-600">AI가 영상을 처리 중입니다...</p>
     </div>
-    {% endif %}
+
+    <div id="result" class="hidden space-y-6 fade-in">
+        <video id="videoPlayer" controls class="w-full rounded-lg shadow"></video>
+        <a id="downloadLink"
+           class="bg-green-600 text-white px-4 py-2 rounded-lg inline-block">
+           다운로드
+        </a>
+    </div>
 
 </div>
+
+<script>
+async function submitForm(actionType) {
+
+    const form = document.getElementById("uploadForm");
+    const formData = new FormData(form);
+    formData.append("action", actionType);
+
+    document.getElementById("status").classList.remove("hidden");
+    document.getElementById("result").classList.add("hidden");
+
+    const response = await fetch("/process", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await response.json();
+
+    document.getElementById("status").classList.add("hidden");
+
+    if (data.video_path) {
+        const video = document.getElementById("videoPlayer");
+        video.src = data.video_path + "?t=" + new Date().getTime();
+        video.load();
+
+        document.getElementById("downloadLink").href = data.video_path;
+
+        document.getElementById("result").classList.remove("hidden");
+    }
+}
+</script>
 
 </body>
 </html>
