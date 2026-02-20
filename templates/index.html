@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DUBBY</title>
+<title>DUBBY - AI 자막 & 더빙</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
 body {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', -apple-system, sans-serif;
     background-color: #f8fafc;
+    color: #1e293b;
 }
 .glass-card {
     background: rgba(255,255,255,0.9);
@@ -17,158 +18,193 @@ body {
     border: 1px solid rgba(226,232,240,0.8);
 }
 .loading-bar {
-    height: 18px;
+    height: 20px;
     width: 0%;
-    background-color: #2563eb;
-    border-radius: 9px;
+    background-color: #3b82f6;
+    border-radius: 10px;
     transition: width 0.2s ease;
 }
 </style>
 </head>
 
-<body class="min-h-screen py-8 px-4">
+<body class="min-h-screen py-6 px-4">
 
-<div class="max-w-4xl mx-auto space-y-6">
-
-<h1 class="text-2xl font-bold">DUBBY</h1>
-
-<div class="glass-card p-6 rounded-2xl space-y-4">
-
-<input type="file" id="videoFile" accept="video/*,audio/*" class="hidden">
-
-<button id="fileButton"
-        class="w-full p-3 border rounded-xl bg-white">
-파일 선택
-</button>
-
-<p id="fileName" class="text-sm text-slate-500">
-선택된 파일 없음
-</p>
-
-<select id="language" class="w-full p-3 border rounded-xl">
-<option value="ko">한국어</option>
-<option value="en">English</option>
-<option value="ja">日本語</option>
-<option value="zh-cn">中文</option>
-</select>
-
-<button id="subtitleBtn"
-        class="w-full bg-blue-600 text-white p-3 rounded-xl">
-자막 생성
-</button>
-
-<button id="dubbingBtn"
-        class="w-full bg-slate-900 text-white p-3 rounded-xl">
-더빙 생성
-</button>
-
-<!-- 로딩바 -->
-<div class="w-full bg-slate-200 rounded-full h-5 overflow-hidden">
-<div id="progressBar" class="loading-bar"></div>
+<!-- UI 언어 선택 -->
+<div class="fixed top-6 right-6">
+    <select id="uiLanguage" class="p-2 border rounded-lg text-sm">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+    </select>
 </div>
 
-<p id="progressText" class="text-right text-xs">0%</p>
+<div class="max-w-5xl mx-auto">
 
+<header class="flex items-center mb-8">
+    <img src="/static/logo.png" alt="DUBBY Logo" class="w-12 h-12 mr-3">
+    <div>
+        <h1 class="text-2xl font-bold">DUBBY</h1>
+        <p class="text-sm text-slate-500" data-i18n="subtitleDesc">
+            자동 자막 생성 및 AI 더빙
+        </p>
+    </div>
+</header>
+
+<main class="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+<div class="md:col-span-5 lg:col-span-4">
+    <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
+
+        <input type="file" id="videoFile" accept="video/*,audio/*" class="w-full">
+
+        <!-- 번역될 언어 선택 -->
+        <select id="language" class="w-full p-3 border rounded-xl">
+            <option value="ko"></option>
+            <option value="en"></option>
+            <option value="ja"></option>
+            <option value="zh-cn"></option>
+        </select>
+
+        <button id="subtitleBtn"
+                class="w-full bg-blue-600 text-white p-3 rounded-xl"
+                data-i18n="subtitleBtn">
+            자막 생성
+        </button>
+
+        <button id="dubbingBtn"
+                class="w-full bg-slate-900 text-white p-3 rounded-xl"
+                data-i18n="dubbingBtn">
+            더빙 생성
+        </button>
+
+        <div>
+            <div class="w-full bg-slate-200 rounded-full h-5">
+                <div id="progressBar" class="loading-bar"></div>
+            </div>
+            <p class="text-right text-xs mt-1" id="progressText">0%</p>
+        </div>
+
+    </div>
 </div>
 
-<!-- 결과 영상 -->
-<video id="resultVideo" controls class="hidden w-full rounded-lg mt-4">
-<track id="subtitleTrack"
-       kind="subtitles"
-       src=""
-       srclang="ko"
-       label="Subtitles"
-       default>
-</video>
+<div class="md:col-span-7 lg:col-span-8">
+    <div class="glass-card min-h-[400px] p-4 rounded-2xl flex flex-col items-center justify-center">
 
+        <video id="resultVideo" controls class="hidden w-full rounded-lg mb-2">
+            <track id="subtitleTrack"
+                   kind="subtitles"
+                   src=""
+                   srclang="ko"
+                   label="자막"
+                   default>
+        </video>
+
+        <a id="subtitleLink"
+           href="#"
+           target="_blank"
+           class="hidden text-blue-600 underline"
+           data-i18n="downloadSubtitle">
+           자막 다운로드
+        </a>
+
+    </div>
+</div>
+
+</main>
 </div>
 
 <script>
 
-const fileInput = document.getElementById("videoFile");
-const fileButton = document.getElementById("fileButton");
-const fileName = document.getElementById("fileName");
-const progressBar = document.getElementById("progressBar");
-const progressText = document.getElementById("progressText");
+/* =========================
+   번역 데이터
+========================= */
+
+const translations = {
+    ko: {
+        subtitleDesc: "자동 자막 생성 및 AI 더빙",
+        subtitleBtn: "자막 생성",
+        dubbingBtn: "더빙 생성",
+        downloadSubtitle: "자막 다운로드",
+        languages: {
+            ko: "한국어",
+            en: "영어",
+            ja: "일본어",
+            "zh-cn": "중국어"
+        }
+    },
+    en: {
+        subtitleDesc: "Automatic Subtitle Generation & AI Dubbing",
+        subtitleBtn: "Generate Subtitles",
+        dubbingBtn: "Generate Dubbing",
+        downloadSubtitle: "Download Subtitles",
+        languages: {
+            ko: "Korean",
+            en: "English",
+            ja: "Japanese",
+            "zh-cn": "Chinese"
+        }
+    },
+    ja: {
+        subtitleDesc: "自動字幕生成およびAI吹き替え",
+        subtitleBtn: "字幕生成",
+        dubbingBtn: "吹き替え生成",
+        downloadSubtitle: "字幕ダウンロード",
+        languages: {
+            ko: "韓国語",
+            en: "英語",
+            ja: "日本語",
+            "zh-cn": "中国語"
+        }
+    },
+    zh: {
+        subtitleDesc: "自动字幕生成与AI配音",
+        subtitleBtn: "生成字幕",
+        dubbingBtn: "生成配音",
+        downloadSubtitle: "下载字幕",
+        languages: {
+            ko: "韩语",
+            en: "英语",
+            ja: "日语",
+            "zh-cn": "中文"
+        }
+    }
+};
+
+const uiSelect = document.getElementById("uiLanguage");
 const languageSelect = document.getElementById("language");
 
-/* 파일 버튼 */
-fileButton.addEventListener("click", () => {
-    fileInput.click();
-});
+/* =========================
+   언어 변경
+========================= */
 
-fileInput.addEventListener("change", () => {
-    if(fileInput.files.length > 0){
-        fileName.textContent = fileInput.files[0].name;
-    }
-});
+function changeLanguage(lang){
 
-/* 업로드 함수 (진행률 포함) */
-function uploadFile(actionType){
+    // UI 텍스트 변경
+    document.querySelectorAll("[data-i18n]").forEach(el=>{
+        const key = el.getAttribute("data-i18n");
+        el.textContent = translations[lang][key];
+    });
 
-    if(fileInput.files.length === 0){
-        alert("파일을 선택하세요.");
-        return;
-    }
+    // ⭐ 언어 select 옵션 번역
+    Array.from(languageSelect.options).forEach(option=>{
+        const value = option.value;
+        option.textContent = translations[lang].languages[value];
+    });
 
-    progressBar.style.width = "0%";
-    progressText.textContent = "0%";
-
-    const formData = new FormData();
-    formData.append("audio", fileInput.files[0]);
-    formData.append("action", actionType);
-    formData.append("subtitle_lang", languageSelect.value);
-    formData.append("dubbing_lang", languageSelect.value);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/process", true);
-
-    /* 업로드 진행률 */
-    xhr.upload.onprogress = function(e){
-        if(e.lengthComputable){
-            const percent = Math.round((e.loaded / e.total) * 100);
-            progressBar.style.width = percent + "%";
-            progressText.textContent = percent + "%";
-        }
-    };
-
-    /* 완료 */
-    xhr.onload = function(){
-
-        if(xhr.status !== 200){
-            alert("업로드 실패");
-            return;
-        }
-
-        progressBar.style.width = "100%";
-        progressText.textContent = "완료";
-
-        const data = JSON.parse(xhr.responseText);
-
-        const video = document.getElementById("resultVideo");
-        const track = document.getElementById("subtitleTrack");
-
-        video.src = data.video_path;
-        track.src = data.subtitle_path;
-        track.srclang = languageSelect.value;
-
-        video.classList.remove("hidden");
-        video.load();
-    };
-
-    xhr.onerror = function(){
-        alert("네트워크 오류");
-    };
-
-    xhr.send(formData);
+    document.documentElement.lang = lang;
+    localStorage.setItem("uiLang", lang);
 }
 
-/* 버튼 연결 */
-document.getElementById("subtitleBtn")
-        .addEventListener("click", ()=>uploadFile("subtitle"));
+uiSelect.addEventListener("change", function(){
+    changeLanguage(this.value);
+});
 
-document.getElementById("dubbingBtn")
-        .addEventListener("click", ()=>uploadFile("dubbing"));
+window.addEventListener("DOMContentLoaded", ()=>{
+    const saved = localStorage.getItem("uiLang") || "ko";
+    uiSelect.value = saved;
+    changeLanguage(saved);
+});
 
 </script>
 
