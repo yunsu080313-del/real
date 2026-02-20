@@ -1,174 +1,178 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DUBBY</title>
-    <link rel="icon" href="data:,">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DUBBY - AI 영상 자막 & 더빙</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background-color: #f8fafc;
-            color: #1e293b;
-        }
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
+}
 
-        .glass-card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-        }
+.glass-card {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+}
 
-        .upload-area {
-            border: 2px dashed #cbd5e1;
-            transition: all 0.2s ease;
-        }
+.upload-area {
+    border: 2px dashed #cbd5e1;
+    transition: all 0.2s ease;
+}
 
-        .upload-area:hover {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
-        }
+.upload-area:hover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
 
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            transition: transform 0.1s active;
-        }
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    transition: transform 0.1s active;
+}
 
-        .btn-primary:active {
-            transform: scale(0.98);
-        }
+.btn-primary:active {
+    transform: scale(0.98);
+}
 
-        .custom-select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            background-size: 1em;
-        }
-
-        .loading-spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            vertical-align: middle;
-            margin-right: 8px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+.custom-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1em;
+}
+</style>
 </head>
 <body class="min-h-screen py-10 px-4">
+<div class="max-w-4xl mx-auto">
 
-    <div class="max-w-4xl mx-auto">
-        <!-- Header -->
-        <header class="mb-10 text-center">
-            <!-- 로고 표시 -->
-            <img src="/static/logo.png" alt="AI Studio Logo" class="mx-auto mb-4 w-24 h-24">
-            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">
-                AI Video Studio
-            </h1>
-            <p class="text-slate-500 font-medium">자동 자막 생성 및 다국어 더빙 솔루션</p>
-        </header>
+<!-- Header -->
+<header class="mb-10 text-center">
+    <img src="/static/logo.png" alt="DUBBY Logo" class="mx-auto mb-4 w-24 h-24">
+    <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">DUBBY</h1>
+    <p class="text-slate-500 font-medium">자동 자막 생성 및 다국어 더빙 솔루션</p>
+</header>
 
-        <main class="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <!-- Left: Settings Form -->
-            <div class="md:col-span-5 lg:col-span-4">
-                <form method="POST" enctype="multipart/form-data" id="mainForm" class="space-y-6">
-                    <div class="glass-card p-6 rounded-2xl shadow-sm">
-                        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4">1. 파일 설정</h2>
-                        
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-semibold mb-2 text-slate-700">미디어 업로드</label>
-                                <label class="upload-area flex flex-col items-center justify-center p-6 rounded-xl cursor-pointer">
-                                    <svg class="w-8 h-8 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                                    </svg>
-                                    <span class="text-xs text-slate-500 font-medium text-center" id="file-name">클릭하여 영상/오디오 선택</span>
-                                    <input type="file" name="audio" accept="video/*,audio/*" required class="hidden" onchange="updateFileName(this)">
-                                </label>
-                            </div>
+<main class="grid grid-cols-1 md:grid-cols-12 gap-8">
+<!-- Left: Settings Form -->
+<div class="md:col-span-5 lg:col-span-4">
+    <div class="glass-card p-6 rounded-2xl shadow-sm space-y-6">
+        <div>
+            <label class="block text-sm font-semibold mb-2 text-slate-700">미디어 업로드</label>
+            <label class="upload-area flex flex-col items-center justify-center p-6 rounded-xl cursor-pointer">
+                <svg class="w-8 h-8 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                <span class="text-xs text-slate-500 font-medium text-center" id="file-name">클릭하여 영상/오디오 선택</span>
+                <input type="file" id="media-file" accept="video/*,audio/*" class="hidden">
+            </label>
+        </div>
 
-                            <div>
-                                <label class="block text-sm font-semibold mb-2 text-slate-700">자막 언어</label>
-                                <select name="subtitle_lang" class="custom-select w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                                    <option value="ko">한국어 (Korean)</option>
-                                    <option value="en">영어 (English)</option>
-                                    <option value="ja">일본어 (Japanese)</option>
-                                    <option value="zh-cn">중국어 (Chinese)</option>
-                                </select>
-                            </div>
+        <div>
+            <label class="block text-sm font-semibold mb-2 text-slate-700">자막 언어</label>
+            <select id="subtitle_lang" class="custom-select w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="ko">한국어</option>
+                <option value="en">영어</option>
+                <option value="ja">일본어</option>
+                <option value="zh-cn">중국어</option>
+            </select>
+        </div>
 
-                            <div>
-                                <label class="block text-sm font-semibold mb-2 text-slate-700">더빙 언어</label>
-                                <select name="dubbing_lang" class="custom-select w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                                    <option value="en">영어 (English)</option>
-                                    <option value="ja">일본어 (Japanese)</option>
-                                    <option value="zh-cn">중국어 (Chinese)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+        <div>
+            <label class="block text-sm font-semibold mb-2 text-slate-700">더빙 언어</label>
+            <select id="dubbing_lang" class="custom-select w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="en">영어</option>
+                <option value="ja">일본어</option>
+                <option value="zh-cn">중국어</option>
+            </select>
+        </div>
 
-                    <div class="space-y-3">
-                        <button type="submit" name="action" value="subtitle" class="w-full btn-primary text-white p-4 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 flex items-center justify-center">
-                            <span>자막 생성하기</span>
-                        </button>
-                        <button type="submit" name="action" value="dubbing" class="w-full bg-slate-900 hover:bg-slate-800 text-white p-4 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center justify-center">
-                            <span>더빙 영상 합성하기</span>
-                        </button>
-                    </div>
+        <div class="space-y-3">
+            <button id="subtitle-btn" class="w-full btn-primary text-white p-4 rounded-xl font-bold text-sm shadow-lg flex items-center justify-center">
+                자막 생성하기
+            </button>
+            <button id="dubbing-btn" class="w-full bg-slate-900 hover:bg-slate-800 text-white p-4 rounded-xl font-bold text-sm shadow-lg flex items-center justify-center">
+                더빙 영상 합성하기
+            </button>
+        </div>
 
-                    <p class="text-[11px] text-slate-400 leading-relaxed px-1">
-                        ※ 대용량 파일의 경우 처리 완료까지 수 분이 소요될 수 있습니다. 페이지를 새로고침하지 마세요.
-                    </p>
-                </form>
+        <div id="progress-container" class="hidden mt-2">
+            <div class="w-full bg-gray-200 rounded-full h-4">
+                <div id="progress-bar" class="bg-blue-500 h-4 rounded-full w-0"></div>
             </div>
-
-            <!-- Right: Results Display -->
-            <div class="md:col-span-7 lg:col-span-8">
-                {% if video_path %}
-                <div class="glass-card h-full min-h-[400px] rounded-2xl flex flex-col items-center justify-center p-4">
-                    <video id="video-player" class="w-full rounded-xl" controls>
-                        <source src="{{ video_path }}" type="video/mp4">
-                        {% if subtitle_path %}
-                        <track src="{{ subtitle_path }}" kind="subtitles" srclang="ko" label="자막" default>
-                        {% endif %}
-                        브라우저가 video 태그를 지원하지 않습니다.
-                    </video>
-                </div>
-                {% else %}
-                <div class="glass-card h-full min-h-[400px] rounded-2xl flex flex-col items-center justify-center text-slate-400 border-dashed">
-                    <div class="bg-slate-50 p-4 rounded-full mb-4">
-                        <svg class="w-12 h-12 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                        </svg>
-                    </div>
-                    <p>파일을 업로드하여 자막 또는 더빙 영상을 생성하세요.</p>
-                </div>
-                {% endif %}
-            </div>
-        </main>
+            <p id="progress-text" class="text-sm text-gray-600 mt-1">0%</p>
+        </div>
     </div>
+</div>
 
-    <script>
-        function updateFileName(input) {
-            const fileNameSpan = document.getElementById('file-name');
-            if (input.files.length > 0) {
-                fileNameSpan.textContent = input.files[0].name;
-            } else {
-                fileNameSpan.textContent = "클릭하여 영상/오디오 선택";
-            }
-        }
-    </script>
+<!-- Right: Results Display -->
+<div class="md:col-span-7 lg:col-span-8">
+    <div class="glass-card h-full min-h-[400px] rounded-2xl flex flex-col items-center justify-center p-4" id="result-container">
+        <p class="text-slate-400">파일을 업로드하고 버튼을 클릭하면 자막/더빙 영상이 생성됩니다.</p>
+    </div>
+</div>
+</main>
+</div>
+
+<script>
+const fileInput = document.getElementById('media-file');
+const fileNameSpan = document.getElementById('file-name');
+fileInput.addEventListener('change', () => {
+    if(fileInput.files.length) fileNameSpan.textContent = fileInput.files[0].name;
+    else fileNameSpan.textContent = "클릭하여 영상/오디오 선택";
+});
+
+async function processMedia(action) {
+    if(!fileInput.files.length) return alert("파일을 선택하세요.");
+
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const resultContainer = document.getElementById('result-container');
+
+    progressContainer.classList.remove('hidden');
+    progressBar.style.width = "0%";
+    progressText.textContent = "0%";
+
+    const formData = new FormData();
+    formData.append("audio", fileInput.files[0]);
+    formData.append("action", action);
+    formData.append("subtitle_lang", document.getElementById('subtitle_lang').value);
+    formData.append("dubbing_lang", document.getElementById('dubbing_lang').value);
+
+    const response = await fetch("/process", { method: "POST", body: formData });
+    if(!response.ok) {
+        progressText.textContent = "에러 발생!";
+        return;
+    }
+
+    // 진행률 간단히 표시 (임시: 실제 서버에서 처리 진행률 전송 시 사용)
+    let percent = 0;
+    const interval = setInterval(() => {
+        percent += 10;
+        if(percent > 100) percent = 100;
+        progressBar.style.width = percent + "%";
+        progressText.textContent = percent + "%";
+        if(percent === 100) clearInterval(interval);
+    }, 300);
+
+    const data = await response.json();
+    resultContainer.innerHTML = `
+        <video class="w-full rounded-xl" controls>
+            <source src="${data.video_path}" type="video/mp4">
+            ${data.subtitle_path ? `<track src="${data.subtitle_path}" kind="subtitles" srclang="ko" label="자막" default>` : ''}
+            브라우저가 video 태그를 지원하지 않습니다.
+        </video>
+    `;
+}
+
+document.getElementById('subtitle-btn').addEventListener('click', () => processMedia('subtitle'));
+document.getElementById('dubbing-btn').addEventListener('click', () => processMedia('dubbing'));
+</script>
 </body>
 </html>
