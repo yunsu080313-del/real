@@ -26,94 +26,112 @@ body {
     border-radius: 10px;
     transition: width 0.2s ease;
 }
+
+.country-btn {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.country-btn.active {
+    background-color: #3b82f6;
+    color: white;
+}
 </style>
 </head>
 
 <body class="min-h-screen py-6 px-4">
-<div class="max-w-5xl mx-auto">
 
-<!-- ===== Header ===== -->
-<header class="flex items-center mb-8">
-    <img src="/static/logo.png" alt="DUBBY Logo" class="w-12 h-12 mr-3">
-    <div>
-        <h1 class="text-2xl font-bold">DUBBY</h1>
-        <p class="text-sm text-slate-500">자동 자막 생성 및 AI 더빙</p>
-    </div>
-</header>
+<!-- ===== 상단 헤더 ===== -->
+<div class="flex justify-between items-center max-w-6xl mx-auto mb-8">
 
-<main class="grid grid-cols-1 md:grid-cols-12 gap-6">
-
-<!-- ===== 왼쪽 설정 영역 ===== -->
-<div class="md:col-span-5 lg:col-span-4">
-    <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
-
-        <input type="file" id="videoFile" accept="video/*,audio/*" class="w-full">
-
-        <select id="language" class="w-full p-3 border rounded-xl">
-            <option value="ko">한국어</option>
-            <option value="en">영어</option>
-            <option value="ja">일본어</option>
-            <option value="zh-cn">중국어</option>
-        </select>
-
-        <button id="subtitleBtn" class="w-full bg-blue-600 text-white p-3 rounded-xl">
-            자막 생성
-        </button>
-
-        <button id="dubbingBtn" class="w-full bg-slate-900 text-white p-3 rounded-xl">
-            더빙 생성
-        </button>
-
-        <!-- 진행률 -->
+    <!-- 왼쪽 로고 -->
+    <div class="flex items-center">
+        <img src="/static/logo.png" alt="DUBBY Logo" class="w-12 h-12 mr-3">
         <div>
-            <div class="w-full bg-slate-200 rounded-full h-5">
-                <div id="progressBar" class="loading-bar"></div>
-            </div>
-            <p class="text-right text-xs mt-1" id="progressText">0%</p>
+            <h1 class="text-2xl font-bold">DUBBY</h1>
+            <p class="text-sm text-slate-500">국가 전용 AI 자막 & 더빙</p>
         </div>
-
     </div>
+
+    <!-- 오른쪽 국가 모드 -->
+    <div class="flex gap-2">
+        <button class="country-btn active" onclick="setCountry('ko', this)">🇰🇷</button>
+        <button class="country-btn" onclick="setCountry('en', this)">🇺🇸</button>
+        <button class="country-btn" onclick="setCountry('ja', this)">🇯🇵</button>
+        <button class="country-btn" onclick="setCountry('zh-cn', this)">🇨🇳</button>
+    </div>
+
 </div>
 
-<!-- ===== 오른쪽 영상 영역 ===== -->
-<div class="md:col-span-7 lg:col-span-8">
-    <div class="glass-card min-h-[400px] p-4 rounded-2xl flex flex-col items-center justify-center">
+<!-- ===== 본문 ===== -->
+<div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
 
-        <!-- 영상 + 자막 표시 -->
-        <video id="resultVideo" controls class="hidden w-full rounded-lg mb-2">
-            <track id="subtitleTrack"
-                   kind="subtitles"
-                   src=""
-                   srclang="ko"
-                   label="자막"
-                   default>
-        </video>
+<!-- 왼쪽 업로드 영역 -->
+<div class="md:col-span-4">
+<div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
 
-        <a id="subtitleLink"
-           href="#"
-           target="_blank"
-           class="hidden text-blue-600 underline">
-           자막 다운로드
-        </a>
+<input type="file" id="videoFile" accept="video/*,audio/*" class="w-full">
 
+<button id="subtitleBtn" class="w-full bg-blue-600 text-white p-3 rounded-xl">
+자막 생성
+</button>
+
+<button id="dubbingBtn" class="w-full bg-slate-900 text-white p-3 rounded-xl">
+더빙 생성
+</button>
+
+<!-- 진행률 -->
+<div>
+    <div class="w-full bg-slate-200 rounded-full h-5">
+        <div id="progressBar" class="loading-bar"></div>
     </div>
+    <p class="text-right text-xs mt-1" id="progressText">0%</p>
 </div>
 
-</main>
+</div>
+</div>
+
+<!-- 오른쪽 영상 영역 -->
+<div class="md:col-span-8">
+<div class="glass-card min-h-[400px] p-4 rounded-2xl flex flex-col items-center justify-center">
+
+<video id="resultVideo" controls class="hidden w-full rounded-lg mb-2">
+    <track id="subtitleTrack"
+           kind="subtitles"
+           src=""
+           srclang="ko"
+           label="자막"
+           default>
+</video>
+
+<a id="subtitleLink"
+   href="#"
+   target="_blank"
+   class="hidden text-blue-600 underline">
+   자막 다운로드
+</a>
+
+</div>
+</div>
+
 </div>
 
 <script>
-const resultVideo = document.getElementById("resultVideo");
-const subtitleLink = document.getElementById("subtitleLink");
-const progressBar = document.getElementById("progressBar");
-const progressText = document.getElementById("progressText");
-const subtitleTrack = document.getElementById("subtitleTrack");
+let selectedLanguage = "ko";
+
+function setCountry(lang, btn){
+    selectedLanguage = lang;
+    document.querySelectorAll(".country-btn")
+            .forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+}
 
 async function uploadFile(actionType){
 
     const fileInput = document.getElementById("videoFile");
-    const language = document.getElementById("language").value;
-
     if(!fileInput.files[0]){
         alert("파일을 선택하세요.");
         return;
@@ -122,16 +140,18 @@ async function uploadFile(actionType){
     const formData = new FormData();
     formData.append("audio", fileInput.files[0]);
     formData.append("action", actionType);
-    formData.append("subtitle_lang", language);
-    formData.append("dubbing_lang", language);
+    formData.append("subtitle_lang", selectedLanguage);
+    formData.append("dubbing_lang", selectedLanguage);
 
-    // 초기화
+    const progressBar = document.getElementById("progressBar");
+    const progressText = document.getElementById("progressText");
+    const resultVideo = document.getElementById("resultVideo");
+    const subtitleLink = document.getElementById("subtitleLink");
+    const subtitleTrack = document.getElementById("subtitleTrack");
+
     progressBar.style.width = "0%";
     progressText.textContent = "0%";
-    resultVideo.classList.add("hidden");
-    subtitleLink.classList.add("hidden");
 
-    // 가짜 진행률 (서버 응답 대기 중)
     let progress = 0;
     const interval = setInterval(()=>{
         if(progress < 95){
@@ -158,21 +178,17 @@ async function uploadFile(actionType){
     progressBar.style.width = "100%";
     progressText.textContent = "100%";
 
-    // 영상 표시
     if(data.video_path){
         resultVideo.src = data.video_path;
         resultVideo.classList.remove("hidden");
     }
 
-    // 자막 표시
     if(data.subtitle_path){
-
         subtitleLink.href = data.subtitle_path;
         subtitleLink.classList.remove("hidden");
 
-        // ⭐ 영상에 자막 연결
         subtitleTrack.src = data.subtitle_path;
-        subtitleTrack.srclang = language;
+        subtitleTrack.srclang = selectedLanguage;
         subtitleTrack.mode = "showing";
 
         resultVideo.classList.remove("hidden");
