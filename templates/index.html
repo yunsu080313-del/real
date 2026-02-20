@@ -71,7 +71,7 @@ body {
                 </label>
 
                 <div>
-                    <label class="block text-sm font-semibold mb-2">언어 선택 (자막 + 더빙)</label>
+                    <label class="block text-sm font-semibold mb-2">언어 선택</label>
                     <select id="language" class="custom-select w-full p-3 bg-white border border-slate-200 rounded-xl text-sm">
                         <option value="ko">한국어</option>
                         <option value="en">영어</option>
@@ -80,9 +80,14 @@ body {
                     </select>
                 </div>
 
-                <button id="processBtn" class="w-full btn-primary text-white p-3 rounded-xl font-bold flex justify-center items-center">
-                    자막 + 더빙 생성
-                </button>
+                <div class="space-y-2">
+                    <button id="subtitleBtn" class="w-full btn-primary text-white p-3 rounded-xl font-bold flex justify-center items-center">
+                        자막 생성
+                    </button>
+                    <button id="dubbingBtn" class="w-full bg-slate-900 hover:bg-slate-800 text-white p-3 rounded-xl font-bold flex justify-center items-center">
+                        더빙 생성
+                    </button>
+                </div>
 
                 <!-- Progress Bar -->
                 <div class="mt-4">
@@ -116,7 +121,7 @@ function updateFileName(input) {
     }
 }
 
-async function uploadFile(){
+async function uploadFile(actionType){
     const fileInput = document.getElementById("videoFile");
     const language = document.getElementById("language").value;
 
@@ -127,39 +132,43 @@ async function uploadFile(){
 
     const formData = new FormData();
     formData.append("audio", fileInput.files[0]);
-    formData.append("action", "both");
-    formData.append("language", language);
+    formData.append("action", actionType);
+    formData.append("subtitle_lang", language);
+    formData.append("dubbing_lang", language);
 
     progressBar.style.width = "0%";
     progressText.textContent = "0%";
     resultVideo.classList.add("hidden");
     subtitleLink.classList.add("hidden");
 
-    // Fetch 요청
-    const response = await fetch("/process", {
-        method: "POST",
-        body: formData
-    });
-
-    if(!response.ok){
-        alert("서버 오류 발생");
-        return;
-    }
-
     // 진행률 애니메이션
     let progress = 0;
     const interval = setInterval(()=>{
-        if(progress < 100){
+        if(progress < 95){
             progress++;
             progressBar.style.width = progress+"%";
             progressText.textContent = progress+"%";
         } else {
             clearInterval(interval);
         }
-    }, 30);
+    }, 100); // 영상 길이에 맞춰 조절 가능
+
+    const response = await fetch("/process", {
+        method: "POST",
+        body: formData
+    });
+
+    clearInterval(interval);
+
+    if(!response.ok){
+        alert("서버 오류 발생");
+        progressBar.style.width = "0%";
+        progressText.textContent = "0%";
+        return;
+    }
 
     const data = await response.json();
-    clearInterval(interval);
+
     progressBar.style.width = "100%";
     progressText.textContent = "100%";
 
@@ -173,7 +182,8 @@ async function uploadFile(){
     }
 }
 
-document.getElementById("processBtn").addEventListener("click", uploadFile);
+document.getElementById("subtitleBtn").addEventListener("click", ()=>uploadFile("subtitle"));
+document.getElementById("dubbingBtn").addEventListener("click", ()=>uploadFile("dubbing"));
 </script>
 </body>
 </html>
