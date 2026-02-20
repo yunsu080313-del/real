@@ -42,13 +42,7 @@ body {
 <div class="max-w-5xl mx-auto">
 
 <header class="flex items-center mb-8">
-    <img src="/static/logo.png" class="w-12 h-12 mr-3">
-    <div>
-        <h1 class="text-2xl font-bold">DUBBY</h1>
-        <p class="text-sm text-slate-500" data-i18n="subtitleDesc">
-            자동 자막 생성 및 AI 더빙
-        </p>
-    </div>
+    <h1 class="text-2xl font-bold">DUBBY</h1>
 </header>
 
 <main class="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -56,9 +50,10 @@ body {
 <div class="md:col-span-5 lg:col-span-4">
 <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
 
-    <!-- ✅ 커스텀 파일 선택 -->
+    <!-- 숨겨진 실제 파일 input -->
     <input type="file" id="videoFile" accept="video/*,audio/*" class="hidden">
 
+    <!-- 커스텀 파일 버튼 -->
     <button id="fileButton"
             class="w-full p-3 border rounded-xl bg-white"
             data-i18n="chooseFile">
@@ -70,7 +65,7 @@ body {
        선택된 파일 없음
     </p>
 
-    <!-- 언어 선택 -->
+    <!-- 번역 대상 언어 -->
     <select id="language" class="w-full p-3 border rounded-xl">
         <option value="ko"></option>
         <option value="en"></option>
@@ -104,7 +99,6 @@ body {
 
 const translations = {
     ko: {
-        subtitleDesc: "자동 자막 생성 및 AI 더빙",
         chooseFile: "파일 선택",
         noFile: "선택된 파일 없음",
         subtitleBtn: "자막 생성",
@@ -117,7 +111,6 @@ const translations = {
         }
     },
     en: {
-        subtitleDesc: "Automatic Subtitle Generation & AI Dubbing",
         chooseFile: "Choose File",
         noFile: "No file selected",
         subtitleBtn: "Generate Subtitles",
@@ -130,7 +123,6 @@ const translations = {
         }
     },
     ja: {
-        subtitleDesc: "自動字幕生成およびAI吹き替え",
         chooseFile: "ファイルを選択",
         noFile: "ファイルが選択されていません",
         subtitleBtn: "字幕生成",
@@ -143,7 +135,6 @@ const translations = {
         }
     },
     zh: {
-        subtitleDesc: "自动字幕生成与AI配音",
         chooseFile: "选择文件",
         noFile: "未选择文件",
         subtitleBtn: "生成字幕",
@@ -157,62 +148,96 @@ const translations = {
     }
 };
 
-const uiSelect = document.getElementById("uiLanguage");
-const languageSelect = document.getElementById("language");
-const fileInput = document.getElementById("videoFile");
-const fileButton = document.getElementById("fileButton");
-const fileName = document.getElementById("fileName");
-
 /* =========================
-   파일 선택 동작
+   DOM 로드 후 실행
 ========================= */
 
-fileButton.addEventListener("click", () => {
-    fileInput.click();
-});
+window.addEventListener("DOMContentLoaded", function(){
 
-fileInput.addEventListener("change", () => {
-    if(fileInput.files.length > 0){
-        fileName.textContent = fileInput.files[0].name;
-    } else {
-        const lang = document.documentElement.lang;
-        fileName.textContent = translations[lang].noFile;
-    }
-});
+    const uiSelect = document.getElementById("uiLanguage");
+    const languageSelect = document.getElementById("language");
+    const fileInput = document.getElementById("videoFile");
+    const fileButton = document.getElementById("fileButton");
+    const fileName = document.getElementById("fileName");
 
-/* =========================
-   언어 변경
-========================= */
-
-function changeLanguage(lang){
-
-    document.querySelectorAll("[data-i18n]").forEach(el=>{
-        const key = el.getAttribute("data-i18n");
-        el.textContent = translations[lang][key];
+    /* 파일 버튼 클릭 */
+    fileButton.addEventListener("click", () => {
+        fileInput.click();
     });
 
-    Array.from(languageSelect.options).forEach(option=>{
-        option.textContent = translations[lang].languages[option.value];
+    /* 파일 선택 표시 */
+    fileInput.addEventListener("change", () => {
+        if(fileInput.files.length > 0){
+            fileName.textContent = fileInput.files[0].name;
+        }
     });
 
-    if(fileInput.files.length === 0){
-        fileName.textContent = translations[lang].noFile;
+    /* 언어 변경 */
+    function changeLanguage(lang){
+
+        document.querySelectorAll("[data-i18n]").forEach(el=>{
+            const key = el.getAttribute("data-i18n");
+            el.textContent = translations[lang][key];
+        });
+
+        Array.from(languageSelect.options).forEach(option=>{
+            option.textContent = translations[lang].languages[option.value];
+        });
+
+        if(fileInput.files.length === 0){
+            fileName.textContent = translations[lang].noFile;
+        }
+
+        document.documentElement.lang = lang;
+        localStorage.setItem("uiLang", lang);
     }
 
-    document.documentElement.lang = lang;
-    localStorage.setItem("uiLang", lang);
-}
+    uiSelect.addEventListener("change", function(){
+        changeLanguage(this.value);
+    });
 
-uiSelect.addEventListener("change", function(){
-    changeLanguage(this.value);
-});
-
-window.addEventListener("DOMContentLoaded", ()=>{
     const saved = localStorage.getItem("uiLang") || "ko";
     uiSelect.value = saved;
     changeLanguage(saved);
-});
 
+    /* =========================
+       업로드 함수 (버튼 작동 핵심)
+    ========================= */
+
+    async function uploadFile(actionType){
+
+        if(fileInput.files.length === 0){
+            alert(translations[document.documentElement.lang].noFile);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("audio", fileInput.files[0]);
+        formData.append("action", actionType);
+        formData.append("subtitle_lang", languageSelect.value);
+        formData.append("dubbing_lang", languageSelect.value);
+
+        const response = await fetch("/process", {
+            method: "POST",
+            body: formData
+        });
+
+        if(!response.ok){
+            alert("Upload failed");
+            return;
+        }
+
+        const data = await response.json();
+        console.log("서버 응답:", data);
+    }
+
+    document.getElementById("subtitleBtn")
+            .addEventListener("click", ()=>uploadFile("subtitle"));
+
+    document.getElementById("dubbingBtn")
+            .addEventListener("click", ()=>uploadFile("dubbing"));
+
+});
 </script>
 
 </body>
