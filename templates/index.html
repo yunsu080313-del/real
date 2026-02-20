@@ -38,7 +38,7 @@ body {
 
 <main class="grid grid-cols-1 md:grid-cols-12 gap-6">
 
-<!-- 왼쪽 패널 -->
+<!-- 왼쪽 -->
 <div class="md:col-span-5">
     <div class="glass-card p-6 rounded-2xl shadow-sm space-y-4">
 
@@ -72,11 +72,18 @@ body {
     </div>
 </div>
 
-<!-- 오른쪽 결과 영역 -->
+<!-- 오른쪽 -->
 <div class="md:col-span-7">
     <div class="glass-card min-h-[400px] p-4 rounded-2xl flex flex-col items-center justify-center">
 
-        <video id="resultVideo" controls class="hidden w-full rounded-lg mb-4"></video>
+        <video id="resultVideo" controls class="hidden w-full rounded-lg mb-4">
+            <track id="subtitleTrack"
+                   kind="subtitles"
+                   src=""
+                   srclang="ko"
+                   label="자막"
+                   default>
+        </video>
 
         <a id="subtitleLink"
            href="#"
@@ -104,11 +111,13 @@ const languageSelect = document.getElementById("language");
 
 const progressBar = document.getElementById("progressBar");
 const progressText = document.getElementById("progressText");
+
 const resultVideo = document.getElementById("resultVideo");
+const subtitleTrack = document.getElementById("subtitleTrack");
 const subtitleLink = document.getElementById("subtitleLink");
 
 // -----------------------------
-// 진행률 표시
+// 진행률
 // -----------------------------
 
 function setProgress(percent){
@@ -130,10 +139,23 @@ function validateFile(){
 }
 
 // -----------------------------
-// 서버 요청 공통 함수
+// 초기화
+// -----------------------------
+
+function resetUI(){
+    resultVideo.classList.add("hidden");
+    subtitleLink.classList.add("hidden");
+    subtitleTrack.src = "";
+    setProgress(0);
+}
+
+// -----------------------------
+// 서버 요청
 // -----------------------------
 
 async function sendRequest(action){
+
+    resetUI();
 
     const file = validateFile();
     if(!file) return;
@@ -141,7 +163,7 @@ async function sendRequest(action){
     setProgress(10);
 
     const formData = new FormData();
-    formData.append("audio", file); // Flask에서 audio로 받음
+    formData.append("audio", file);
     formData.append("action", action);
 
     if(action === "subtitle"){
@@ -158,22 +180,30 @@ async function sendRequest(action){
             body: formData
         });
 
-        setProgress(70);
-
-        const result = await response.json();
-
-        if(result.error){
-            alert(result.error);
+        if(!response.ok){
+            const text = await response.text();
+            console.error(text);
+            alert("서버 오류 발생");
             setProgress(0);
             return;
         }
+
+        setProgress(70);
+
+        const result = await response.json();
 
         if(result.video_path){
             resultVideo.src = result.video_path;
             resultVideo.classList.remove("hidden");
         }
 
+        // 🔥 자막 연결 핵심 부분
         if(result.subtitle_path){
+            subtitleTrack.src = result.subtitle_path;
+            subtitleTrack.srclang = languageSelect.value;
+            subtitleTrack.default = true;
+
+            resultVideo.load();  // 트랙 새로고침
             subtitleLink.href = result.subtitle_path;
             subtitleLink.classList.remove("hidden");
         }
@@ -188,7 +218,7 @@ async function sendRequest(action){
 }
 
 // -----------------------------
-// 버튼 이벤트 연결
+// 버튼 이벤트
 // -----------------------------
 
 subtitleBtn.addEventListener("click", () => {
